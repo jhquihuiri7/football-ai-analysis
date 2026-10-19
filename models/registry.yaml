@@ -1,0 +1,50 @@
+# Fichas de los modelos que usa este repo.
+#
+# Cada bloque es copia literal del de `models/registry.yaml` de football-ai (rama
+# migracion/dos-moviles), que es donde se declaran. Si allí cambia una ficha, se copia
+# aquí en el mismo commit en que se empiece a usar el modelo nuevo.
+#
+# Los .onnx no van en git: entran por fuera (Google Drive en Colab, `models/onnx/` en
+# local). `fanalysis.ficha` comprueba al cargar el sha256 y que la entrada y las salidas
+# del .onnx sean las que dice su ficha: equivocarse no da error, solo da basura.
+
+version: 2
+
+models:
+  tdeed-snb:
+    version: "0.1.0"
+    task: spotting
+    # Un spotter no saca cajas: el postproceso declarado es el inerte de la v1.
+    postprocess: detr
+    box_format: cxcywh_norm
+    precision: fp32
+    artifacts:
+      onnx:
+        path: onnx/tdeed-snb.onnx
+        sha256: dde3c1d8b240dd63446d2ba1dc6ab0cca9314c3177a1a37593fadf46e7e982bf
+        opset: 17
+    license: >
+      pesos de T-DEED (GPL-3.0) afinados sobre SoccerNet Ball Action Spotting.
+      SOLO PARA MEDIR: ni el código ni los datos son de uso comercial.
+    exported: "2026-09-20"
+    input:
+      name: clip
+      shape: [1, 100, 3, 448, 796]
+      layout: NTCHW
+      color: RGB
+      # El modelo normaliza por dentro (x/255 y estadísticas de ImageNet), así
+      # que aquí no se toca el píxel: hacerlo lo normalizaría dos veces.
+      scale: 1
+      mean: [0.0, 0.0, 0.0]
+      std: [1.0, 1.0, 1.0]
+      sample_fps: 12.5
+    activation: softmax
+    outputs:
+      - {name: logits, shape: [1, 100, 13], meaning: logits}
+      - {name: displacement, shape: [1, 100], meaning: displacement}
+    classes: [normal_play, PASS, DRIVE, HEADER, HIGH PASS, OUT, CROSS, THROW IN, SHOT, BALL PLAYER BLOCK, PLAYER SUCCESSFUL TACKLE, FREE KICK, GOAL]
+    notes: >
+      Dos cabezas en el modelo original (SoccerNet 17 + SoccerNetBall 12); el
+      grafo ya viene recortado a la segunda. La salida `displacement` lleva el
+      desplazamiento temporal por frame y hay que aplicarla antes de buscar
+      picos, o los eventos salen movidos.

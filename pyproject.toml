@@ -1,0 +1,107 @@
+# football-ai-analysis — análisis de partidos con los modelos ya entrenados.
+#
+# Aquí no se entrena ni se emite: se cargan los `.onnx` que produce football-ai-training,
+# con la ficha que declara football-ai en `models/registry.yaml`, y se analizan vídeos
+# grabados. Lo primero, los highlights de los goles (ADR 0001).
+
+[project]
+name = "football-ai-analysis"
+version = "0.1.0"
+description = "Detección de acciones y highlights de goles sobre vídeos de partidos, en Colab."
+readme = "README.md"
+# Colab trae 3.12 hoy; 3.10 deja margen si cambia la imagen.
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+dependencies = [
+    "numpy>=1.24",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# Las dos ruedas de onnxruntime instalan el mismo módulo y se pisan: se elige una.
+cpu = ["onnxruntime>=1.18"]
+gpu = ["onnxruntime-gpu>=1.18"]
+plots = ["matplotlib>=3.7"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.8",
+    "mypy>=1.11",
+    "types-PyYAML>=6.0",
+    "onnxruntime>=1.18",
+    "matplotlib>=3.7",
+]
+
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["fanalysis"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.format]
+# Los cuadernos se revisan con el linter, pero no se formatean: el formateador parte cada
+# argumento en su línea y una celda de parámetros deja de leerse de un vistazo.
+exclude = ["notebooks/*.ipynb"]
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    "D",       # los docstrings se escriben en prosa, no con un formato impuesto
+    "ANN401",  # `Any` es legítimo al leer YAML y el JSON de ffprobe
+    "COM812",  # lo gestiona el formateador
+    "CPY001",  # no se pone cabecera de copyright en cada fichero
+    "S603",    # subprocess con lista de argumentos, que es la forma segura
+    "S607",    # ffmpeg y ffprobe desde el PATH: es lo que hay en Colab y en local
+    "RUF001",  # el texto va en español, con sus signos
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.pylint]
+# Los parámetros de comportamiento van por nombre y con su valor por defecto, que sale de
+# constants.py: partirlos en un objeto de configuración no aclara nada.
+max-args = 8
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["S101", "PLR2004", "ANN", "INP001", "SLF001", "FBT003"]
+# Un cuaderno de Colab se lee y se ejecuta a mano, y mezcla Python con magias de shell.
+"notebooks/*.ipynb" = [
+    "ANN",      # anotar tipos en un cuaderno no ayuda a leerlo
+    "BLE001",   # probar si hay un secreto de Colab acepta cualquier fallo como «no hay»
+    "E402",     # las celdas importan donde toca contarlo, no al principio
+    "E501",     # las órdenes de shell no se parten en dos
+    "EM101",    # un `raise` con su mensaje dentro se lee mejor en una celda
+    "EM102",
+    "ERA001",   # hay líneas comentadas a propósito: son las alternativas a elegir
+    "F401",     # se importa para comprobar que está instalado
+    "I001",
+    "INP001",
+    "PLC0415",  # lo opcional (pandas, IPython, files de Colab) se importa donde se usa
+    "PLR2004",
+    "PTH123",
+    "T201",     # un cuaderno enseña lo que pasa imprimiéndolo
+    "TRY003",
+]
+
+[tool.mypy]
+strict = true
+files = ["fanalysis"]
+python_version = "3.10"
+
+[[tool.mypy.overrides]]
+module = ["onnxruntime", "onnxruntime.*", "matplotlib", "matplotlib.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "modelo: necesita el .onnx real de T-DEED (FAI_MODELO_ONNX o ../football-ai/models/onnx)",
+    "ffmpeg: necesita ffmpeg y ffprobe en el PATH",
+]

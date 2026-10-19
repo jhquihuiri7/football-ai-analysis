@@ -1,0 +1,25 @@
+# --- Entornos y cachés ---
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.ipynb_checkpoints/
+
+# --- Modelos: entran por fuera, cada uno con su ficha en models/registry.yaml ---
+*.onnx
+*.pt
+*.pth
+*.mlpackage
+*.mlpackage.zip
+
+# --- Vídeos y resultados: pesan, y son del partido, no del código ---
+*.mp4
+*.MP4
+*.mov
+*.MOV
+*.mkv
+*.ts
+*.npz
+salida/

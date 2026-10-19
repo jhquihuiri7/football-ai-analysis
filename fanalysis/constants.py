@@ -96,6 +96,19 @@ gol, que salían separadas 0,88-1,12 s, y conserva los goles distintos."""
 MIN_HOP_FRAMES: Final = 1
 """El salto más corto posible: una ventana por frame nuevo."""
 
+BLIND_BACKGROUND_SHARE: Final = 0.65
+"""Puntuación media del fondo por encima de la cual el modelo no está viendo el partido.
+
+**Medido** con `tdeed-snb` (2026-10-19, una ventana de 8 s por caso):
+- scouting de estadio (`video.mp4` de football-ai): 0,44-0,46, con PASS y DRIVE a 0,8-0,9;
+- panorámica amateur desde la grada (`videoGP.MP4`): 0,76, con el gol de 04:24 a 0,0002;
+- frames negros: 0,71; ruido: 0,75.
+Es decir: por encima de 0,65 el modelo responde a ese vídeo como a una imagen vacía."""
+
+BLIND_PROBE_WINDOWS: Final = 3
+"""Ventanas de prueba, repartidas por el tramo, antes del análisis largo. Tres cuestan
+segundos en una GPU y menos de dos minutos en CPU, y bastan para ver si el modelo ve."""
+
 # --------------------------------------------------------------------------- #
 # Goles
 # --------------------------------------------------------------------------- #
@@ -150,10 +163,8 @@ AUDIO_BITRATE: Final = "128k"
 
 SNAPSHOT_WIDTH_PX: Final = 640
 """Ancho del fotograma de cada gol en la revisión, en píxeles: se ve si hay gol sin que
-el cuaderno pese."""
-
-SNAPSHOT_QUALITY: Final = 3
-"""Calidad JPEG de ffmpeg para ese fotograma (2 la mejor, 31 la peor)."""
+el cuaderno pese. Va en PNG: el JPEG de ffmpeg 9 se niega con algunos vídeos de rango
+de color limitado («Non full-range YUV is non-standard»)."""
 
 PREVIEW_WIDTH_PX: Final = 640
 PREVIEW_CRF: Final = 30
@@ -182,6 +193,11 @@ cambiados: es lo que pasa con los móviles en vertical."""
 SECONDS_PER_MINUTE: Final = 60
 SECONDS_PER_HOUR: Final = 3600
 """Para escribir y leer instantes como mm:ss y hh:mm:ss."""
+
+TENTHS_PER_SECOND: Final = 10
+"""Los instantes se enseñan con una décima: el modelo puntúa cada 80 ms, y más cifras
+serían precisión que no hay. El nombre de un clip redondea igual, para que diga el mismo
+segundo que la tabla."""
 
 FFMPEG: Final = "ffmpeg"
 FFPROBE: Final = "ffprobe"

@@ -49,6 +49,7 @@ __all__ = [
     "expected_frames",
     "parse_probe",
     "probe",
+    "read_window",
     "validate",
 ]
 
@@ -198,6 +199,23 @@ def validate(
 def expected_frames(segment: Segment, fps: float) -> int:
     """Los frames que debería dar el tramo al ritmo del modelo."""
     return round(segment.duration_s * fps)
+
+
+def read_window(info: VideoInfo, ficha: Ficha, start_s: float) -> npt.NDArray[np.uint8]:
+    """Una ventana del modelo que empieza en `start_s`, para las pruebas antes del análisis."""
+    tramo = Segment(start_s=start_s, end_s=start_s + ficha.window_s)
+    frames = np.zeros((ficha.clip_frames, ficha.height, ficha.width, CHANNELS), np.uint8)
+    leidos = 0
+    with FfmpegFrameReader(info, ficha, tramo) as lector:
+        while leidos < ficha.clip_frames and lector.read_into(frames[leidos]):
+            leidos += 1
+    if leidos < ficha.clip_frames:
+        msg = (
+            f"a partir de {start_s:.1f} s solo hay {leidos} frames y una ventana necesita "
+            f"{ficha.clip_frames}"
+        )
+        raise VideoError(msg)
+    return frames
 
 
 class FfmpegFrameReader:

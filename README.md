@@ -15,11 +15,30 @@ vídeos ya grabados.
 
 **Qué necesita**
 - Un entorno con GPU: *Entorno de ejecución → Cambiar tipo de entorno → T4 GPU*. En CPU
-  también funciona, pero cada ventana de 8 s tarda unos 25 s, así que un partido se va a
-  horas.
+  también funciona, pero cada ventana de 8 s tarda unos 21-25 s en una CPU de portátil
+  (medido): un partido se va a horas.
 - El modelo `tdeed-snb.onnx` (50 MB) en tu Google Drive. El cuaderno comprueba su sha256
   contra la ficha antes de usarlo.
-- El vídeo del partido, apaisado, en Drive o subido a la sesión.
+- El vídeo del partido, apaisado y con un plano que siga el juego (ver abajo), en Drive o
+  subido a la sesión.
+
+**La GPU de Colab.**
+- **Qué onnxruntime se instala.** El cuaderno lee en `nvidia-smi` la CUDA que admite el
+  driver e instala el `onnxruntime-gpu` que le toca: desde la 1.27 para CUDA 13, y de la
+  1.21 a la 1.26 para CUDA 12. Lo instala con sus propias librerías de NVIDIA, así que no
+  depende de la CUDA que traiga Colab.
+- **Si hay GPU y aun así abre en CPU, se para** y dice por qué. Seguir costaría horas.
+
+**Qué vídeos sirven.** T-DEED se entrenó con retransmisiones de televisión. Medido el
+2026-10-19:
+- **Con una cámara de estadio** (un feed de scouting de la Bundesliga) ve el juego: 23
+  acciones en 30 s, con pases y conducciones a 0,8-0,9.
+- **Con una panorámica amateur desde la grada** (`videoGP.MP4`), en la que los jugadores
+  miden unos pocos píxeles, no ve nada: responde como a una imagen negra.
+
+Por eso, antes del análisis largo, el cuaderno pasa tres ventanas de prueba y se para si
+el modelo no está viendo el partido. Con las grabaciones del soporte, usa la del
+**programa** (la cámara virtual que sale a YouTube), no la panorámica en bruto.
 
 **Qué sale**, en la carpeta de salida (en Drive, si la ruta empieza por `/content/drive`):
 

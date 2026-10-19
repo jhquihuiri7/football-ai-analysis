@@ -536,8 +536,8 @@ dev = [
 requires-dist = [
     { name = "matplotlib", marker = "extra == 'plots'", specifier = ">=3.7" },
     { name = "numpy", specifier = ">=1.24" },
-    { name = "onnxruntime", marker = "extra == 'cpu'", specifier = ">=1.18" },
-    { name = "onnxruntime-gpu", marker = "extra == 'gpu'", specifier = ">=1.18" },
+    { name = "onnxruntime", marker = "extra == 'cpu'", specifier = ">=1.21" },
+    { name = "onnxruntime-gpu", marker = "extra == 'gpu'", specifier = ">=1.21" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]
 provides-extras = ["cpu", "gpu", "plots"]
@@ -546,7 +546,7 @@ provides-extras = ["cpu", "gpu", "plots"]
 dev = [
     { name = "matplotlib", specifier = ">=3.7" },
     { name = "mypy", specifier = ">=1.11" },
-    { name = "onnxruntime", specifier = ">=1.18" },
+    { name = "onnxruntime", specifier = ">=1.21" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "ruff", specifier = ">=0.8" },
     { name = "types-pyyaml", specifier = ">=6.0" },

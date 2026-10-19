@@ -18,9 +18,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# Las dos ruedas de onnxruntime instalan el mismo módulo y se pisan: se elige una.
-cpu = ["onnxruntime>=1.18"]
-gpu = ["onnxruntime-gpu>=1.18"]
+# Las dos ruedas de onnxruntime instalan el mismo módulo y se pisan: se elige una. En
+# Colab no se usa `gpu`: el cuaderno elige la versión por la CUDA del driver
+# (fanalysis/entorno.py), porque desde la 1.27 el paquete de PyPI es de CUDA 13.
+cpu = ["onnxruntime>=1.21"]
+gpu = ["onnxruntime-gpu>=1.21"]
 plots = ["matplotlib>=3.7"]
 
 [dependency-groups]
@@ -29,7 +31,7 @@ dev = [
     "ruff>=0.8",
     "mypy>=1.11",
     "types-PyYAML>=6.0",
-    "onnxruntime>=1.18",
+    "onnxruntime>=1.21",
     "matplotlib>=3.7",
 ]
 

@@ -10,9 +10,12 @@ from fanalysis.spotting import (
     activate,
     aggregate,
     apply_displacement,
+    background_share,
     detect,
     find_actions,
+    looks_blind,
     peaks,
+    probe_starts,
     window_starts,
 )
 
@@ -200,3 +203,26 @@ def test_la_mascara_suprime_igual_que_comparar_con_todos(gap):
 def test_find_actions_con_una_clase_que_no_existe():
     with pytest.raises(SpottingError, match="no tiene las clases"):
         find_actions(timeline_con({}), kinds=("gol",))
+
+
+def test_el_fondo_medio_dice_si_el_modelo_ve():
+    kinds = ("normal_play", "pass", "goal")
+    scores = np.array([[0.9, 0.1, 0.0], [0.3, 0.7, 0.0]], np.float32)
+    assert background_share(scores, kinds) == pytest.approx(0.6)
+    with pytest.raises(SpottingError, match="fondo"):
+        background_share(scores, ("pass", "goal", "shot"))
+    # Las medidas del 2026-10-19: estadio 0,44-0,46; panorámica amateur 0,76.
+    assert not looks_blind([0.44, 0.46, 0.45])
+    assert looks_blind([0.76, 0.79, 0.71])
+    assert not looks_blind([0.9, 0.45, 0.44])  # manda la mediana, no una ventana suelta
+    with pytest.raises(SpottingError, match="ventanas de prueba"):
+        looks_blind([])
+
+
+def test_las_ventanas_de_prueba_se_reparten_por_el_tramo():
+    assert probe_starts(0.0, 30.0, 8.0, 3) == pytest.approx([5.5, 11.0, 16.5])
+    assert probe_starts(100.0, 108.0, 8.0, 1) == [100.0]
+    with pytest.raises(SpottingError, match="una ventana"):
+        probe_starts(0.0, 5.0, 8.0, 3)
+    with pytest.raises(SpottingError, match="al menos una"):
+        probe_starts(0.0, 30.0, 8.0, 0)

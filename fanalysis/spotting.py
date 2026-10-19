@@ -32,6 +32,7 @@ import numpy as np
 from fanalysis.constants import (
     ACTION_THRESHOLD,
     BACKGROUND_KIND,
+    BLIND_BACKGROUND_SHARE,
     CHANNELS,
     DEFAULT_HOP_FRAMES,
     DISPLACEMENT,
@@ -58,11 +59,14 @@ __all__ = [
     "activate",
     "aggregate",
     "apply_displacement",
+    "background_share",
     "check_hop",
     "check_threshold",
     "detect",
     "find_actions",
+    "looks_blind",
     "peaks",
+    "probe_starts",
     "window_starts",
 ]
 
@@ -210,6 +214,43 @@ def peaks(
             apagados[max(0, frame - radio) : frame + radio + 1] = True
             encontrados.append((frame, nombre, float(columna[frame])))
     return sorted(encontrados)
+
+
+def background_share(
+    scores: npt.NDArray[np.float32], kinds: Sequence[str], background: str = BACKGROUND_KIND
+) -> float:
+    """La puntuación media del fondo: cuánto cree el modelo que «no pasa nada».
+
+    En un partido que el modelo entiende, el fondo baja cada vez que hay balón en juego.
+    En uno que no, se queda alto todo el rato, como con una imagen vacía.
+    """
+    if background not in kinds:
+        msg = f"el modelo no tiene clase de fondo «{background}»"
+        raise SpottingError(msg)
+    return float(scores[:, list(kinds).index(background)].mean())
+
+
+def looks_blind(shares: Sequence[float], limit: float = BLIND_BACKGROUND_SHARE) -> bool:
+    """Si las ventanas de prueba dicen que el modelo no está viendo el partido.
+
+    Manda la mediana: una ventana suelta puede caer en un descanso o en una pausa.
+    """
+    if not shares:
+        msg = "hacen falta ventanas de prueba para decidirlo"
+        raise SpottingError(msg)
+    return float(np.median(shares)) > limit
+
+
+def probe_starts(start_s: float, end_s: float, window_s: float, count: int) -> list[float]:
+    """Dónde empiezan `count` ventanas de prueba, repartidas por el tramo sin salirse de él."""
+    if count < 1:
+        msg = f"hace falta al menos una ventana de prueba, y se pidieron {count}"
+        raise SpottingError(msg)
+    holgura = end_s - start_s - window_s
+    if holgura < 0:
+        msg = f"el tramo dura {end_s - start_s:.1f} s y una ventana {window_s:g} s"
+        raise SpottingError(msg)
+    return [start_s + holgura * (n + 1) / (count + 1) for n in range(count)]
 
 
 @dataclass(frozen=True)

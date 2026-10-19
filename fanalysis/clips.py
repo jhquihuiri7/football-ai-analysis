@@ -32,9 +32,9 @@ from fanalysis.constants import (
     PREVIEW_CRF,
     PREVIEW_WIDTH_PX,
     SECONDS_PER_MINUTE,
-    SNAPSHOT_QUALITY,
     SNAPSHOT_WIDTH_PX,
     STDERR_TAIL_CHARS,
+    TENTHS_PER_SECOND,
     X264_CRF,
     X264_PRESET,
 )
@@ -148,8 +148,9 @@ def plan_clips(
 def clip_name(plan: ClipPlan) -> str:
     """`gol_01_04m24s.mp4`, o `goles_02-03_05m28s.mp4` si el clip lleva varios."""
     numeros = "-".join(f"{n:02d}" for n in plan.goals)
-    primero = plan.goal_times[0]
-    minutos, segundos = divmod(int(primero), SECONDS_PER_MINUTE)
+    # El segundo que enseña la tabla (`format_instant`): 4,96 s es «00:05.0» y aquí «00m05s».
+    segundo = round(plan.goal_times[0] * TENTHS_PER_SECOND) // TENTHS_PER_SECOND
+    minutos, segundos = divmod(segundo, SECONDS_PER_MINUTE)
     prefijo = "gol" if len(plan.goals) == 1 else "goles"
     return f"{prefijo}_{numeros}_{minutos:02d}m{segundos:02d}s.mp4"
 
@@ -200,12 +201,15 @@ def concat_command(listfile: Path, target: Path) -> list[str]:
 def snapshot_command(
     source: Path, target: Path, *, t_s: float, width: int = SNAPSHOT_WIDTH_PX
 ) -> list[str]:
-    """Un fotograma del instante `t_s`, en JPEG y con `width` de ancho, para la revisión."""
+    """Un fotograma del instante `t_s`, con `width` de ancho, para la revisión.
+
+    El formato lo pone la extensión de `target`, y conviene PNG: el JPEG de ffmpeg 9 se
+    niega con algunos vídeos de rango de color limitado.
+    """
     return [
         FFMPEG, "-v", "error", "-nostdin", "-y",
         "-ss", f"{max(0.0, t_s):.3f}", "-i", str(source),
-        "-frames:v", "1", "-vf", f"scale={width}:-2", "-q:v", str(SNAPSHOT_QUALITY),
-        str(target),
+        "-frames:v", "1", "-vf", f"scale={width}:-2", str(target),
     ]  # fmt: skip
 
 

@@ -26,7 +26,7 @@ Hay cinco preguntas sin contestar:
 
 | Modelo | Qué es | ¿Sirve para el gol? |
 |---|---|---|
-| `tdeed-snb.onnx` | T-DEED sobre SoccerNet Ball: 12 acciones y fondo en ventanas de 8 s. Exportado y verificado contra torch (9,54e-06) | **Sí, y es el único.** Línea base sobre `videoGP.MP4`: 6 goles de 6 a umbral 0,2, cada GOAL con un SHOT entre 0,24 y 2,16 s antes. El recall no se ha medido |
+| `tdeed-snb.onnx` | T-DEED sobre SoccerNet Ball: 12 acciones y fondo en ventanas de 8 s. Exportado y verificado contra torch (9,54e-06) | **Sí, y es el único.** Línea base de T1 (torch) sobre `videoGP.MP4`: 6 goles de 6 a umbral 0,2, cada GOAL con un SHOT entre 0,24 y 2,16 s antes. El recall no se ha medido. Con este `.onnx`, esa línea base no se reproduce: ver «Medido al validar» |
 | `rfdetr-small.onnx` | Detector de jugadores, porteros, árbitros y balón a 512×512 | No ve acciones. Para ver si el balón entra hace falta saber dónde está la portería en la imagen |
 | `best.pt` | YOLOv8n de ultralytics (AGPL) con las mismas cuatro clases, sin código de cómo se hizo | No. Además, ultralytics está prohibido |
 | N3 (TCN sobre posiciones) | Preentreno con SkillCorner | No: F1 de gol 0,15, y pide las posiciones del N0, que un vídeo suelto no tiene |
@@ -142,10 +142,60 @@ cambiar un umbral no debería costarla.
 - **Cortar con `-c copy`.** El corte sería impreciso, y a veces el clip empezaría con
   frames congelados.
 
+### 9. Si el modelo no ve el vídeo, se para (decisión de este ADR, tras medirlo)
+
+Antes del análisis largo se pasan tres ventanas de prueba repartidas por el tramo. Si la
+mediana de la puntuación media del fondo pasa de **0,65**, el cuaderno se para: el modelo
+no está viendo el partido, y el análisis saldría vacío. Se puede forzar con
+`IGNORAR_PRUEBA`.
+
+El 0,65 sale de lo medido el 2026-10-19, con una ventana de 8 s por caso:
+
+| Entrada | Fondo medio | Lo más alto |
+|---|---|---|
+| Cámara de estadio (scouting de la Bundesliga, `video.mp4` de football-ai) | 0,44-0,46 | PASS 0,92, DRIVE 0,92, HEADER 0,55 |
+| Panorámica amateur desde la grada (`videoGP.MP4`), en el gol de 04:24 | 0,76 | PASS 0,18, GOAL 0,0002 |
+| Frames negros | 0,71 | HIGH PASS 0,28 |
+| Ruido | 0,75 | PASS 0,57 |
+
+### 10. La GPU de Colab: onnxruntime según el driver, y parar si cae a CPU
+
+Desde la 1.27, el `onnxruntime-gpu` de PyPI se compila contra CUDA 13, y hasta la 1.26
+contra CUDA 12. Con el paquete equivocado la sesión no falla: cae a la CPU y va unas 25
+veces más lenta. Así que:
+- el cuaderno lee en `nvidia-smi` la CUDA que admite el driver e instala
+  `onnxruntime-gpu[cuda,cudnn]`, que trae sus propias librerías de NVIDIA. Desde la 1.27
+  si el driver llega a CUDA 13, y de la 1.21 a la 1.26 si se queda en CUDA 12
+  (`fanalysis/entorno.py`);
+- `preload_dlls()` carga esas librerías al abrir la sesión;
+- si hay GPU y la sesión abre en CPU, el cuaderno se para.
+
+**Sin probar en Colab**: desde esta máquina no hay GPU NVIDIA.
+
+## Medido al validar (2026-10-19, en CPU)
+
+- **La línea base de T-DEED no se reproduce con este `.onnx`.** En el tramo 04:10-06:10
+  de `videoGP.MP4`, la línea base de T1 (torch en Colab, 2026-09-20) vio tres goles: 04:24
+  con 0,962, 05:28 con 0,888 y 06:00 con 0,255. Con el `.onnx` y la cadena de este repo,
+  GOAL no pasa de 0,000 en todo el tramo, y en 2 minutos salen 2 acciones, cuando a aquel
+  ritmo serían unas 49.
+- **Lo descartado:** el orden de color (BGR da lo mismo), el rango de entrada (0-1 da lo
+  mismo), el orden de clases (`class.txt` casa con la ficha), la carga de los pesos
+  (estricta) y los instantes (frame × 2 / 25).
+- **El `.onnx` está vivo:** con la cámara de estadio ve pases, conducciones y cabezazos.
+- **Lo que queda:** con un vídeo así, el `.onnx` no ve lo que vio aquella línea base. O la
+  línea base se corrió con otro fichero u otros pesos, o hay algo entre torch y este
+  `.onnx` que T6 no cazó, porque comparó sobre ruido. Desde aquí no se puede saber: el
+  Control de aplicaciones de Windows bloquea torch.
+- **Las cifras que vienen de aquella línea base se quedan como punto de partida sin
+  confirmar:** el umbral de 0,2 con 6 de 6 y el SHOT entre 0,24 y 2,16 s antes del GOAL.
+
 ## Consecuencias
 
 - Hay un cuarto repo. Los tres de la migración no cambian, y nada de aquí entra en el
   producto.
+- Con las grabaciones del soporte, lo que sirve es la del programa (la cámara virtual).
+  La panorámica en bruto no le sirve a T-DEED.
 - El mismo cuaderno mide el recall de T-DEED en partidos propios, que nunca se ha medido.
   Esa medida le sirve a ML-54 y a EV-08 como línea base.
 
@@ -153,6 +203,8 @@ cambiar un umbral no debería costarla.
 
 | Punto | Recomendación | Lo cierra |
 |---|---|---|
+| Por qué no se reproduce la línea base de T1 | Volver a correr `t1_baseline.ipynb` (torch) sobre el mismo `videoGP.MP4`, y este cuaderno con `IGNORAR_PRUEBA` sobre el mismo tramo, y comparar | el propietario, en Colab |
+| Panorámicas | Recortar un plano 16:9 que siga el juego antes de T-DEED; `rfdetr-small` sabe dónde están los jugadores y el balón | una tarea nueva |
 | El recall de T-DEED en nuestras cámaras | Pasar el cuaderno por un partido completo con `GOLES_REALES` | el propietario |
 | HEADER como remate | Es extrapolación; medirlo con partidos anotados | la primera medida |
 | Los umbrales por clase | Con la curva P/R delante, como en el ADR 0013 | la primera medida |

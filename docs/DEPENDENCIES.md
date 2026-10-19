@@ -9,7 +9,8 @@ Política: toda dependencia nueva se anota aquí en el mismo commit, con su lice
 |---|---|---|
 | numpy | BSD-3-Clause | puntuaciones, ventanas y frames |
 | PyYAML | MIT | leer `models/registry.yaml` |
-| onnxruntime / onnxruntime-gpu | MIT | ejecutar el `.onnx`. Se instala una de las dos (extras `cpu` y `gpu`), porque las dos dan el mismo módulo |
+| onnxruntime / onnxruntime-gpu | MIT | ejecutar el `.onnx`. Se instala una de las dos (extras `cpu` y `gpu`), porque las dos dan el mismo módulo. En Colab, la versión la elige `fanalysis/entorno.py` por la CUDA del driver |
+| Ruedas de NVIDIA (CUDA runtime, cuBLAS, cuFFT, cuRAND, NVRTC y cuDNN), por los extras `[cuda,cudnn]` de onnxruntime-gpu | licencia de NVIDIA para sus librerías redistribuibles | solo en la sesión de Colab, para que onnxruntime-gpu no dependa de la CUDA que traiga. No se redistribuyen |
 | matplotlib (extra `plots`) | licencia de matplotlib, tipo PSF y compatible con BSD | la gráfica de la línea de tiempo |
 
 ## De desarrollo

@@ -18,6 +18,7 @@ from fanalysis.video import (
     expected_frames,
     parse_probe,
     probe,
+    read_window,
     validate,
 )
 
@@ -260,3 +261,15 @@ def test_la_cadena_entera_sin_el_modelo(tmp_path):
     assert linea.source == "v.mp4"
     # El fondo gana en todo el tramo: ni una acción.
     assert find_actions(linea) == []
+
+
+@pytest.mark.ffmpeg
+@pytest.mark.skipif(not TIENE_FFMPEG, reason="hace falta ffmpeg y ffprobe en el PATH")
+def test_una_ventana_de_prueba(tmp_path):
+    ficha = ficha_real()
+    leido = probe(_video(tmp_path / "v.mp4", segundos=10))
+    ventana = read_window(leido, ficha, 1.0)
+    assert ventana.shape == (100, 448, 796, 3)
+    assert ventana.std() > 0
+    with pytest.raises(VideoError, match="solo hay"):
+        read_window(leido, ficha, 5.0)

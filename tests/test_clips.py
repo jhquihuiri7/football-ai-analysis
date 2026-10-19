@@ -83,6 +83,8 @@ def test_el_nombre_dice_los_goles_y_el_minuto():
     dos = ClipPlan(300.0, 340.0, (2, 3), (328.0, 330.0), False, False)
     assert clip_name(uno) == "gol_01_04m24s.mp4"
     assert clip_name(dos) == "goles_02-03_05m28s.mp4"
+    # El mismo segundo que la tabla: 4,96 s se enseña como 00:05.0.
+    assert clip_name(ClipPlan(0.0, 15.0, (1,), (4.96,), True, False)) == "gol_01_00m05s.mp4"
 
 
 def test_el_corte_busca_antes_de_abrir_y_recodifica():
@@ -102,7 +104,7 @@ def test_el_corte_busca_antes_de_abrir_y_recodifica():
 
 
 def test_el_fotograma_y_la_vista_previa_son_ligeros():
-    foto = snapshot_command(Path("p.mp4"), Path("g.jpg"), t_s=-0.5)
+    foto = snapshot_command(Path("p.mp4"), Path("g.png"), t_s=-0.5)
     assert foto[foto.index("-ss") + 1] == "0.000"  # nunca antes del principio
     assert foto[foto.index("-frames:v") + 1] == "1"
     assert "scale=640:-2" in foto
@@ -259,9 +261,9 @@ def test_cortes_reales_al_frame_y_highlights(tmp_path):
     total = build_highlights(hechos, tmp_path / "clips" / "highlights.mp4")
     assert media_duration(total) == pytest.approx(6.0, abs=0.2)
 
-    foto = tmp_path / "gol_01.jpg"
+    foto = tmp_path / "gol_01.png"
     run_or_fail(snapshot_command(fuente, foto, t_s=4.0), "sacar el fotograma")
-    assert foto.read_bytes()[:2] == b"\xff\xd8"  # cabecera JPEG
+    assert foto.read_bytes()[:8] == b"\x89PNG\r\n\x1a\n"  # cabecera PNG
     vista = tmp_path / "vista.mp4"
     run_or_fail(preview_command(hechos[0].path, vista), "hacer la vista previa")
     assert media_duration(vista) == pytest.approx(3.0, abs=0.1)

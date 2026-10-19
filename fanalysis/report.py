@@ -6,7 +6,7 @@ import csv
 import json
 from typing import TYPE_CHECKING, Any
 
-from fanalysis.constants import SECONDS_PER_HOUR, SECONDS_PER_MINUTE
+from fanalysis.constants import SECONDS_PER_HOUR, SECONDS_PER_MINUTE, TENTHS_PER_SECOND
 
 if TYPE_CHECKING:
     from collections.abc import Mapping, Sequence
@@ -29,8 +29,8 @@ __all__ = [
 
 def format_instant(t_s: float) -> str:
     """`264.3` → `04:24.3`; con horas, `1:04:24.3`. Con una décima: el modelo va a 80 ms."""
-    decimas = round(t_s * 10)
-    segundos, decima = divmod(decimas, 10)
+    decimas = round(t_s * TENTHS_PER_SECOND)
+    segundos, decima = divmod(decimas, TENTHS_PER_SECOND)
     horas, resto = divmod(segundos, SECONDS_PER_HOUR)
     minutos, segundos = divmod(resto, SECONDS_PER_MINUTE)
     if horas:

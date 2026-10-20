@@ -13,7 +13,7 @@ Leyenda: ✅ hecha · 🚧 en curso · ⬜ pendiente
 | AN-04 | El vídeo: sondeo, validaciones y frames con ffmpeg | ✅ |
 | AN-05 | Los goles: remate, duplicados y medida contra lo anotado | ✅ |
 | AN-06 | Antes y después del gol: clips, highlights e informe | ✅ |
-| AN-07 | El cuaderno de Colab: GPU por driver y prueba de si el modelo ve | ✅ en local · ⬜ en Colab |
+| AN-07 | El cuaderno de Colab: GPU por driver y prueba de si el modelo ve | ✅ en local · 🚧 en Colab (la detección, hecha) |
 | AN-08 | El recall de T-DEED en un partido propio completo | ⬜ |
 
 ---
@@ -98,6 +98,36 @@ Una ventana por caso:
 | Frames negros | 0,71 | HIGH PASS 0,28 |
 | Ruido | 0,75 | PASS 0,57 |
 
+### En una T4 de Colab (2026-10-19)
+
+El propietario corrió el cuaderno desde VS Code con un kernel de Colab: Tesla T4, driver con
+CUDA 13.0, `onnxruntime-gpu` 1.31.0 y Python 3.13. El vídeo fue `partido.mp4`, un partido
+propio de 1280×720 a 30 fps, en h264 y con audio. Duraba 39:00 y se leyó desde Drive.
+- **El proveedor fue `CUDAExecutionProvider`.** La elección de onnxruntime por el driver
+  funcionó a la primera.
+- **La prueba de si el modelo ve** dio un fondo medio de 0,64, 0,56 y 0,69. La mediana,
+  0,64, pasa por muy poco: el límite es 0,65.
+- **La detección:** 1.167 ventanas con salto de 25 en **126,5 min, a 6,50 s por ventana**.
+  Es casi 4 veces más rápido que en la CPU de esta máquina, pero mucho menos de lo que se
+  esperaba de la GPU. Todavía no se sabe en qué parte se va el tiempo: leer los frames,
+  prepararlos o el `session.run`.
+- **La barra de tqdm no se vio.** En VS Code con el kernel de Colab, el widget no se
+  dibuja. Solo queda su texto inicial (`0/1167`), y durante los 126 min la celda no
+  enseñó nada.
+
+Lo medido en esta máquina (i7-1165G7, en CPU) para buscar dónde se va el tiempo:
+- **El backbone es un RegNetY-200MF.** Sus anchos son 24, 56, 152 y 368, leídos del grafo.
+  El grafo tiene 4.276 nodos.
+- **Una ventana, con el perfilador de onnxruntime: 47,9 s.**
+  - Las convoluciones se llevan el 68 %, y casi todo es del stem y de las etapas 1 y 2, a
+    resolución alta.
+  - Los reordenamientos de layout se llevan el 16 %.
+  - ScatterND, Where y el desplazamiento temporal no pasan del 1-4 %.
+- **Preparar la ventana:** ordenar el anillo, 0,085 s; pasarla a float32 traspuesta,
+  0,307 s.
+- **ffmpeg:** 30 s de 1080p a 25 fps, reducidos a 796×448 y 12,5 fps, en 6,0 s con 2 hilos
+  y en 3,5 s con todos.
+
 ### Lo que salió al validar, y ya está cambiado
 
 - **La prueba de si el modelo ve** (ADR 0001 §9): tres ventanas antes del análisis largo;
@@ -120,8 +150,10 @@ Una ventana por caso:
 
 ### Qué quedó fuera
 
-- **El cuaderno no se ha ejecutado en Colab ni en una GPU.** El primer uso dirá si la
-  elección de onnxruntime por el driver funciona allí.
+- **En Colab solo se ha comprobado hasta la detección** (ver «En una T4 de Colab»). De la
+  celda 6 en adelante no hay resultados apuntados.
+- **El progreso depende de un widget.** Fuera del navegador no se ve: hay que cambiarlo
+  por texto.
 - **Ningún gol real del modelo se ha cortado.** Con `video.mp4` no hay goles, y con
   `videoGP.MP4` el modelo no ve. Los clips se probaron con goles sintéticos sobre un vídeo
   real, y con los tests.
@@ -129,7 +161,8 @@ Una ventana por caso:
 
 ### Siguiente paso
 
-1. El propietario corre el cuaderno en Colab con una T4 sobre `video.mp4` y apunta aquí
-   los segundos por ventana y el proveedor.
+1. Saber dónde se van los 6,5 s por ventana de la T4. Para eso, una celda que pase 5
+   ventanas y mida por separado la lectura, la preparación y el `session.run`. Además, el
+   progreso en texto en vez de con el widget.
 2. Después, sobre un partido del soporte grabado del **programa**, con `GOLES_REALES`, y
    sale la primera P/R de goles en metraje propio (AN-08).
